@@ -1,8 +1,11 @@
 // App.js
-import {Navbar, NavbarBrand, NavbarContent, NavbarItem, Button} from "@nextui-org/react";
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Button } from "@nextui-org/react";
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import players from '../components/data';
+import Confetti from 'react-confetti';
+import Modal from 'react-modal';
+import PlayerListModalContent from '../components/PlayerListModal';
 
 const shuffleArray = (array) => {
   let shuffledArray = array.slice();
@@ -20,36 +23,31 @@ const App = () => {
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(0);
   const [isGameWon, setIsGameWon] = useState(false);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
 
   useEffect(() => {
-    // Duplicar las cartas para que haya dos de cada jugador
     const duplicatedPlayers = [...players, ...players];
     const shuffledPlayers = shuffleArray(duplicatedPlayers);
-    setCards(shuffledPlayers.map((player) => ({ ...player, flipped: false, matched: false })));
+    setCards(shuffledPlayers.map((player, index) => ({ ...player, id: index, flipped: false, matched: false })));
   }, []);
 
   const handleCardClick = (index) => {
     if (flippedIndices.length === 2 || isGameWon) {
-      // Ya hay dos cartas volteadas o se ha ganado el juego, no hacer nada
       return;
     }
 
     setFlippedIndices((prevFlippedIndices) => [...prevFlippedIndices, index]);
 
     if (flippedIndices.length === 1) {
-      // Comprobar si las dos cartas coinciden
       if (cards[flippedIndices[0]].name === cards[index].name) {
         setMatchedPairs((prevMatchedPairs) => [...prevMatchedPairs, cards[flippedIndices[0]].name]);
         setFlippedIndices([]);
-        // Incrementar el puntaje por cada pareja coincidente
         setScore((prevScore) => prevScore + 1);
 
-        // Verificar si se ha ganado el juego
         if (score + 1 === cards.length / 2) {
           setIsGameWon(true);
         }
       } else {
-        // Voltear las cartas después de un breve tiempo y reiniciar el puntaje
         setTimeout(() => {
           setFlippedIndices([]);
           setScore(0);
@@ -59,8 +57,7 @@ const App = () => {
   };
 
   const resetGame = () => {
-    // Reiniciar el juego conservando el mejor puntaje
-    setCards(shuffleArray([...players, ...players]).map((player) => ({ ...player, flipped: false, matched: false })));
+    setCards(shuffleArray([...players, ...players]).map((player, index) => ({ ...player, id: index, flipped: false, matched: false })));
     setFlippedIndices([]);
     setMatchedPairs([]);
     setScore(0);
@@ -68,11 +65,10 @@ const App = () => {
   };
 
   useEffect(() => {
-    // Actualizar el mejor puntaje cuando se alcanza un nuevo máximo
-    if (score > bestScore) {
-      setBestScore(score);
+    if (isGameWon) {
+      setModalIsOpen(true);
     }
-  }, [score, bestScore]);
+  }, [isGameWon]);
 
   return (
     <div className="App">
@@ -81,24 +77,14 @@ const App = () => {
           <p className="font-bold text-inherit">ACME</p>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
-        <NavbarItem>
-        {isGameWon ? (
-          <div className="win-message">¡Felicidades, has ganado!</div>
-        ) : (
-          <div className="score-container">
-            <div className="score"></div>
-            <div className="best-score"></div>
-          </div>
-        )}
-        </NavbarItem>
-        <NavbarItem>
-            <h1>Points: {score}</h1>
-          </NavbarItem>
-          <NavbarItem>
-            <h1>
-              Best: {bestScore}
-            </h1>
-          </NavbarItem>
+          {isGameWon ? (
+            <div className="win-message">¡Felicidades, has ganado!</div>
+          ) : (
+            <div className="score-container">
+              <div className="score">Puntaje actual: {score}</div>
+              <div className="best-score">Mejor puntaje: {bestScore}</div>
+            </div>
+          )}
           <NavbarItem>
             <Button onClick={resetGame} color="primary" variant="flat">
               Reiniciar Juego
@@ -107,7 +93,7 @@ const App = () => {
         </NavbarContent>
       </Navbar>
       <h1>Juego de Memoria de Cartas de Jugadores</h1>
-      
+
       <div className="card-container">
         {cards.map((card, index) => (
           <div
@@ -122,7 +108,35 @@ const App = () => {
             )}
           </div>
         ))}
+        {isGameWon && (
+          <div className="confetti-container">
+            <Confetti width={window.innerWidth} height={window.innerHeight} colors={['#87CEEB', '#FFFFFF', '#FFFF00']} />
+          </div>
+        )}
       </div>
+
+      {/* Modal para mostrar la lista de jugadores al finalizar el juego */}
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={() => setModalIsOpen(false)}
+        contentLabel="Lista de Jugadores"
+        style={{
+          overlay: {
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          },
+          content: {
+            width: '400px',
+            margin: 'auto',
+            borderRadius: '8px',
+            padding: '20px',
+          },
+        }}
+      >
+        <PlayerListModalContent players={players} />
+        <Button onClick={() => setModalIsOpen(false)} color="primary" variant="flat">
+          Cerrar
+        </Button>
+      </Modal>
     </div>
   );
 };
